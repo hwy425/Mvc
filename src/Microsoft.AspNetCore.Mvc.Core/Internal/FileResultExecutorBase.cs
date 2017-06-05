@@ -73,13 +73,13 @@ namespace Microsoft.AspNetCore.Mvc.Internal
             var preconditionState = GetPreconditionState(context, httpRequestHeaders, lastModified, etag);
             if (preconditionState == PreconditionState.NotModified)
             {
-                serveBody = false;
                 response.StatusCode = StatusCodes.Status304NotModified;
+                return (range: null, rangeLength: 0, serveBody: false);
             }
             else if (preconditionState == PreconditionState.PreconditionFailed)
             {
-                serveBody = false;
                 response.StatusCode = StatusCodes.Status412PreconditionFailed;
+                return (range: null, rangeLength: 0, serveBody: false);
             }
 
             if (fileLength.HasValue)
@@ -91,13 +91,9 @@ namespace Microsoft.AspNetCore.Mvc.Internal
                 response.ContentLength = fileLength.Value;
                 if (HttpMethods.IsHead(request.Method) || HttpMethods.IsGet(request.Method))
                 {
-                    if ((preconditionState == PreconditionState.Unspecified ||
-                        preconditionState == PreconditionState.ShouldProcess))
+                    if (IfRangeValid(context, httpRequestHeaders, lastModified, etag))
                     {
-                        if (IfRangeValid(context, httpRequestHeaders, lastModified, etag))
-                        {
-                            return SetRangeHeaders(context, httpRequestHeaders, fileLength);
-                        }
+                        return SetRangeHeaders(context, httpRequestHeaders, fileLength);
                     }
                 }
             }
